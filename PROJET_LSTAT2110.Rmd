@@ -1,0 +1,278 @@
+---
+title: "Projet LSTAT2110 -- ANALYSE DES DONNEES"
+author: KANA TSIGUIA GABIN, 05581900, DATS2M
+output:
+  html_document:
+    toc: yes
+    toc_depth: '3'
+  pdf_document:
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+  word_document:
+    toc: yes
+    toc_depth: '3'
+---
+
+<!-- En haut, compliter/supprimer selon besoin. -->
+<!-- Voir les consignes pour le projet. -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(comment = "")
+```
+```{r}
+# Library necessaire
+library(FactoMineR)
+library(stats)
+```
+# Introduction
+Le monde de l'automobile dispose de nombreux constructeurs de nos jours.
+Chaque constructeur ayant des spécificités apportés à ses produits qui les
+rendent diffenrents par rapport aux autres et par conséquent, ont plus de valeur que d'autres.Néamoins, les valeurs des autos ne se limitent pas juste au constructeur, mais aussi à des caractéristiques tels que la dimension, la puissance, le type de carburant, type de carrosserie etc...
+Notre étude se base donc sur la base de donnée DATASET_AUTO, qui présente une
+série d'autos de marque differentes ou de meme marques, et leur differentes caracteristiques.
+Il nous revient donc d'analyser ces données, pour comprendre quelles sont les 
+caractéristiques qui entre le plus en jeu lors de la definition de la valeur de
+l'auto (son prix).
+
+# Présentation des données, analyse descriptive
+Le jeu de données que nous utilisons est un échantion de 164 automobiles, collecté par un concessionaire. Pour chaque auto, des caracteristiques tels que la marque, la carrosserie, l'indice de risque (utilisé par les assurances), le
+type de carburant, la puissance etc... et d'autres, sont reportés.
+
+```{r}
+# import des données dans le repertoire de travail
+Auto <- read.csv("C:/Users/hp/Desktop/LSTAT2110/datasets_Auto3.csv",sep = ';')
+
+
+
+# Verification conformité des données
+
+```
+
+Les premières observations du jeux de données sont les suivantes de manière indicative.
+
+```{r}
+head(Auto)
+```
+
+La statistique descriptive des variables est la suivante:
+
+```{r}
+summary(Auto)
+```
+Nous observons 9 variables de type factor(categorielle), et une variable(engine_location) ayant une seule valeur( front) pou toutes les observations.
+ces variables factor seront supprimées pour l'analyse ACP, et engine_location sera supprimée pour tout le déroulement du devoir, car n'ayant aucun impact.
+
+
+```{r}
+
+#supression des variables factor pour l'ACP
+Auto$engine_location <- NULL
+#copie de la table avec toutes la var factor (pour autres analyses)
+Auto2 <- Auto
+Auto$make <- NULL
+Auto$fuel_type <- NULL
+Auto$aspiration <- NULL
+Auto$num_of_doors <- NULL
+Auto$body_style <- NULL
+Auto$drive_wheels <- NULL
+Auto$engine_type <- NULL
+Auto$num_of_cylinders <- NULL
+Auto$fuel_system <- NULL
+#conversion de la variable stroke en numerique 
+Auto$stroke <- as.numeric(Auto$stroke)
+Auto$bore <- as.numeric(Auto$bore)
+# Matrice de corrélation
+
+round(cor(Auto),2)
+```
+
+La matrice  nous montre une forte corrélation entre les variables: wheel_base, length, widths, curb_weight, horsepower et price 
+```{r histogramme, echo=FALSE}
+par(mfrow=c(2,2))
+hist(Auto$wheel_base)
+hist(Auto$length)
+hist(Auto$widths)
+hist(Auto$curb_weight)
+hist(Auto$horsepower)
+hist(Auto$price)
+hist(Auto$compression_ratio)
+hist(Auto$engine_size)
+par(mfrow=c(1,1))
+hist(Auto$stroke)
+
+```
+
+Nous observons des histogrammes obtenus ci-dessus, que certaines variables sont normalement distribuées pour les 164 observations, tels que HORSEPOWER, WHEEL_BASE, LENGTH, WIDTHS et CURB_WEIGHT . les autres variables ne suivent aucune distribution à priori connue, tels que PRICE, COMPRESSION_RATIO, ENGINE_SIZE, qui auraient un impact important sur la valeur d'une auto. 
+```{r}
+# Il serait bonne norme de garder une copie ayant les variables FACTOR pour des analyses antérieures, AFC
+Auto2 <- Auto
+```
+
+# Analyse en composantes principales (ACP)
+Une ACP est réalisée pour déterminer la corrélation des différents caractéristiques et leur implications dans la détermination de la valeur de l'auto.
+
+```{r }
+# on applique ACP sur la donnée entière
+res<- PCA(scale(Auto), ncp=ncol(Auto), graph=FALSE)
+##CHOIX NOMBRES D'AXES: 5
+# Ce choix ce fait à partir de la sortie de la fonction suivante.
+```
+
+## Choix du nombre de composantes principales
+```{r}
+res$eig
+```
+
+ Le choix des 5 composantes principales est en fonction du pourcentage qu'elles cumulent, c'est à dire 85.87% de la variance. et la plus faible composant ayant un pourcentage de variance minimum superieure à 5 (plus précisement égale à 5.003%). Choix confirmé en observant le COUDE de la distribution tel que suit:
+ 
+```{r composantes}
+par(mfrow=c(1,2))
+plot(res$eig[,"eigenvalue"],type="l",xlab="Composantes",ylab="Valeurs propres")
+barplot(res$eig[,"eigenvalue"],type="l",xlab="Composantes",ylab="Valeurs propres ")
+abline(h=1, lty="dashed")
+```
+
+## Analyse et interprétations des variables  sur les axes
+Nous idenfions les variables qui sont faiblement représentées sur les deux premières composantes. Ceci nous permettrait par exemple de nous abstenir d'interpréter ces variables sur le cercle de corrélation.  
+```{r}
+round(sort(rowSums(res$var$cos2[,1:2])), digits = 3)
+```
+```{r}
+round(sort(rowSums(res$var$cos2[,3:4])), digits = 3)
+```
+
+Nous considérons différents plans factoriels pour étudier la corrélation entre les variables. Les représentations des variables dans le premier et second plans factoriels sont les suivantes:
+```{r}
+# premier plan (axes 1,2)
+par(mfrow=c(1,1))
+plot.PCA(res, choix = "var", axes=c(1,2))
+```
+```{r}
+# 2eme plan (axes 3,4)
+par(mfrow=c(1,1))
+plot.PCA(res, choix = "var", axes=c(3,4))
+``` 
+ 
+Les variables HIGHWAY_MPG et CITY_MPG sont fortement correlées positivement entre elles, ainsi que ENGINE_SIZE, CURB_WEIGTH, LENGTH, WIDTHS, WHEEL_BASE, BORE ET PRICE dans le premier plan(axes 1,2), confirmant donc les valeurs de la matrice de corrélation vue plus haut. PEAK_RPM et SYMBOLING etant correlées négativement.
+Dans le deuxième plan, on ne remarque pas une forte correlation entre variables, ainsi que d'autres plan testés au cours de mon analyse.
+
+```{r}
+# variables les plus fortement corolées avec les composantes
+dimdesc(res,axes = c(1,2))
+```
+
+```{r}
+# variables les plus fortement corolées avec les composantes
+dimdesc(res,axes = c(3,4))
+```
+Observations dans le premier plan factoriel: 
+```{r}
+plot.PCA(res, choix = "ind", axes=c(1,2))
+```
+
+
+observations dans le second plan factoriel: 
+```{r}
+plot.PCA(res, choix = "ind", axes=c(3,4))
+```
+
+  
+# Clustering 
+```{r}
+# standardisation pour la méthode de classification
+AutoClust <- scale(Auto)
+head(AutoClust)
+
+# Classification hiérarchique saut minimum (single linkage)
+AutoClustEuc <- hclust(dist(AutoClust), method = "ward.D")
+# Dendrogramme
+plot(AutoClustEuc)
+plot(Auto$price)
+```
+Nous utilisons la méthode de WARD pour classifier les données. En effet,
+le DENDROGRAMME nous montre des niveaux de classification.
+en observant la variable PRICE, on se rend compte que les prix des autos peuvent etre classés en 4 catégories (5000-10000, 10000-15000, 15000-25000 et 25000-30000+)
+
+
+```{r}
+# Niveaux d'aggrégation
+
+barplot(tail(AutoClustEuc$height, n = 7),
+        ylab = "aggregation level")
+```
+
+##########  AFC #########
+
+```{r test_chisquare}
+# Verification données sauvegarde
+str(Auto2)
+
+
+# frequence des données selon chaque variable categorielle pour le calcul du chi-squared
+tab1<-table(Auto2$num_of_cylinders)
+tab1
+
+tab2<-table(Auto2$drive_wheels)
+tab2
+
+tab3<-table(Auto2$fuel_type)
+tab3
+
+tab4<-table(Auto2$make)
+tab4
+
+tab5<-table(Auto2$aspiration)
+tab5
+tab6<-table(Auto2$body_style)
+tab6
+tab7<-table(Auto2$num_of_doors)
+tab7
+tab8<-table(Auto2$engine_type)
+tab8
+tab9<-table(Auto2$fuel_system)
+tab9
+
+
+#pvaleur < 0.05: rejet l'hypothese d'independance
+#chisq.test(tab1)
+#chisq.test(tab2)
+#chisq.test(tab3)
+#chisq.test(tab4)#independance
+#chisq.test(tab5)
+#chisq.test(tab6)
+#chisq.test(tab7)
+#chisq.test(tab8)
+#chisq.test(tab9)
+
+```
+Nous pouvons observer que d'après les test du chi-square sur les differentes variables categorielles, seule la variable MARQUE est independante.
+
+# Analyse des correspondances
+
+```{r,echo=FALSE}
+head(Auto2)
+AutoPCA<- CA(Auto, ncp = 5, graph = FALSE)
+AutoPCA
+plot(AutoPCA)
+round(AutoPCA$eig, digits = 2)
+
+lapply(AutoPCA$col, round,2)
+t<-lapply(AutoPCA$row, round,2)
+t$inertia
+
+round(sort(rowSums(AutoPCA$col$cos2[,1:2])),digits = 3)
+round(sort(rowSums(AutoPCA$row$cos2[,1:2])),digits = 3)
+round(AutoPCA$col$contrib[,c(1:2)],digits = 3)
+```
+
+
+
+# Conclusions
+
+Au cours de notre analyse, nous avons effectué principalement une AFC,
+qui nous permet de comprendre quelles sont les variables qui incident dans
+la definition de la valeur d'une auto; à savoir les variables ENGINE_SIZE, CURB_WEIGTH, LENGTH, WIDTHS, WHEEL_BASE, BORE et PRICE.
+Il est à noter que des 9 variables categorielles présente dans le jeu de données,une seule n'aurait pas de contribution sur notre evaluation, il s'agit de la variable Make.
+
